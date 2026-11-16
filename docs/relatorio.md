@@ -9,7 +9,7 @@
 | Disciplina | Banco de Dados |
 | Curso | Engenharia da Computação |
 | Instituição | Afya Centro Universitário |
-| Semestre | 1/2026 |
+| Semestre | 2/2026 |
 
 ## 2. Resumo executivo
 
