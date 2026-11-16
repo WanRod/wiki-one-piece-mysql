@@ -2,7 +2,7 @@
 
 Banco de dados relacional que cataloga e historiza o universo de **One Piece**: personagens, raças, tripulações, organizações, títulos, Akuma no Mi, Haki, armas, navios, quartéis-generais, locais, arcos, eventos e recompensas. Cada vínculo guarda o período em que valeu, com datas no calendário oficial da obra (Kaienreki).
 
-Projeto Final da disciplina **Banco de Dados**, curso de **Engenharia da Computação**, Afya Centro Universitário, semestre 1/2026.
+Projeto Final da disciplina **Banco de Dados**, curso de **Engenharia da Computação**, Afya Centro Universitário, semestre 2/2026.
 
 ## Integrantes
 
@@ -21,7 +21,6 @@ Projeto Final da disciplina **Banco de Dados**, curso de **Engenharia da Computa
 
 ```
 ├── README.md
-├── instrucoes.docx             enunciado do projeto
 ├── docs/
 │   ├── relatorio.md            relatório técnico
 │   ├── dicionario-dados.md     dicionário de dados
@@ -31,23 +30,21 @@ Projeto Final da disciplina **Banco de Dados**, curso de **Engenharia da Computa
 │       ├── diagrama-classes.drawio   diagrama de classes (editável no draw.io)
 │       └── diagrama-classes.png
 └── sql/
-    ├── 01-banco-e-dados.sql    criação do banco e das tabelas
-    ├── 02-povoamento.sql       povoamento com dados da One Piece Wiki e da Library of Ohara
-    └── 03-consultas.sql        consultas comentadas
+    ├── 01-banco-e-dados.sql    criação do banco e das tabelas e povoamento
+    └── 02-consultas.sql        consultas comentadas
 ```
 
 ## Como executar
 
-> O script `01-banco-e-dados.sql` começa com `DROP DATABASE IF EXISTS onepiece_wiki` e recria o banco do zero.
+> O script `01-banco-e-dados.sql` cria o banco `onepiece_wiki`. Se ele já existir na instância, o script para logo na primeira linha; para executá-lo de novo, apague o banco antes.
 
-**MySQL Workbench:** abra `sql/01-banco-e-dados.sql` em *File › Open SQL Script* e execute o script inteiro. Faça o mesmo, nesta ordem, com `sql/02-povoamento.sql` e `sql/03-consultas.sql`.
+**MySQL Workbench:** abra `sql/01-banco-e-dados.sql` em *File › Open SQL Script* e execute o script inteiro. Depois faça o mesmo com `sql/02-consultas.sql`.
 
 **Linha de comando:**
 
 ```bash
 mysql -u <usuario> -p --default-character-set=utf8mb4 < sql/01-banco-e-dados.sql
-mysql -u <usuario> -p --default-character-set=utf8mb4 < sql/02-povoamento.sql
-mysql -u <usuario> -p --default-character-set=utf8mb4 onepiece_wiki < sql/03-consultas.sql
+mysql -u <usuario> -p --default-character-set=utf8mb4 onepiece_wiki < sql/02-consultas.sql
 ```
 
 ## Visão geral do modelo
@@ -75,6 +72,6 @@ O povoamento tem 4.641 registros, com pelo menos 15 em cada tabela, coletados da
 | Entrega | Situação |
 |---|---|
 | Estrutura do banco (tabelas e restrições) | concluída |
-| Diagramas (entidade-relacionamento e classes), dicionário de dados e relatório | concluídos, exceto o catálogo de consultas |
+| Diagramas (entidade-relacionamento e classes), dicionário de dados e relatório | concluídos |
 | Povoamento (15+ registros por tabela) | concluído |
-| Consultas (`sql/03-consultas.sql`) | em andamento |
+| Consultas (`sql/02-consultas.sql`) | concluídas: 5 simples e 5 com JOIN |

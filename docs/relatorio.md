@@ -19,7 +19,7 @@ Este projeto modela esse universo em um banco relacional MySQL, o `onepiece_wiki
 
 ## 3. Domínio e regras de negócio
 
-O domínio é uma enciclopédia (wiki) do mundo de One Piece. A entidade central é o **personagem**, que tem uma raça, uma ocupação principal, um local de origem e um arco de estreia. Em volta dele ficam os vínculos que mudam com o tempo: títulos, organizações, tripulações, frutas, armas, navios e recompensas. O mundo é organizado em **locais** dentro de áreas (os quatro Blues, a Grand Line, a Red Line, o Calm Belt, as ilhas do céu e o fundo do mar), e a história é dividida em **arcos** agrupados em sagas, onde acontecem os **eventos**.
+O domínio é uma enciclopédia (wiki) do mundo de One Piece. A entidade central é o **personagem**, que tem uma ocupação principal e pode ter uma raça, um local de origem e um arco de estreia, quando a fonte os informa. Em volta dele ficam os vínculos que mudam com o tempo: títulos, organizações, tripulações, frutas, armas, navios e recompensas. O mundo é organizado em **locais** dentro de áreas (os quatro Blues, a Grand Line, a Red Line, o Calm Belt, as ilhas do céu e o fundo do mar), e a história é dividida em **arcos** agrupados em sagas, onde acontecem os **eventos**.
 
 As datas seguem o calendário interno da obra, o Kaienreki (Calendário do Mar). O presente da história é 1522 antes do salto temporal de dois anos e 1524 depois dele.
 
@@ -165,37 +165,312 @@ Com isso cada fato é registrado uma única vez, títulos e raças existem por c
 
 ## 7. Catálogo de consultas
 
-> **Seção pendente.** As consultas serão escritas em `sql/03-consultas.sql`. Para cada consulta, esta seção terá: número, descrição em linguagem natural, código SQL e exemplo de saída esperada.
+As consultas estão em [`sql/02-consultas.sql`](../sql/02-consultas.sql) e foram executadas sobre o banco criado e povoado por `sql/01-banco-e-dados.sql`. Os exemplos de saída abaixo mostram as primeiras linhas de cada resultado.
 
-Cobertura exigida pelo enunciado:
+| Consulta | Categoria | Tabelas | Recursos |
+|---|---|---|---|
+| Q1 | Simples | 1 | WHERE, LIKE, ORDER BY |
+| Q2 | Simples | 1 | WHERE, BETWEEN, ORDER BY |
+| Q3 | Simples | 1 | WHERE, IN, ORDER BY |
+| Q4 | Simples | 1 | DISTINCT, WHERE, LIKE, ORDER BY |
+| Q5 | Simples | 1 | ORDER BY, LIMIT |
+| Q6 | JOIN | 2 | INNER JOIN, GROUP BY, COUNT |
+| Q7 | JOIN | 2 | INNER JOIN, GROUP BY, HAVING, COUNT, MIN, MAX, AVG |
+| Q8 | JOIN | 2 | INNER JOIN, WHERE, GROUP BY, COUNT, SUM |
+| Q9 | JOIN | 4 | INNER JOIN, LEFT JOIN, WHERE, ORDER BY |
+| Q10 | JOIN | 3 | INNER JOIN, WHERE, GROUP BY, COUNT |
 
-| Categoria | Mínimo | Recursos a cobrir |
+### Q1. Personagens do Clã D.
+
+Quem carrega a inicial "D." no nome? A consulta lista os personagens da linhagem do Clã D., em ordem alfabética, com o epíteto de cada um.
+
+```sql
+SELECT
+  personagem.nome    AS nome,
+  personagem.epiteto AS epiteto
+FROM personagem
+WHERE
+  (personagem.nome LIKE '%D.%')
+ORDER BY
+  personagem.nome;
+```
+
+Exemplo de saída (5 de 14 linhas):
+
+| nome | epiteto |
+|---|---|
+| Clou D. Clover | NULL |
+| D. D. Tee | NULL |
+| Davy D. Jones | Pirata do Mar Profundo |
+| Gol D. Roger | Rei dos Piratas |
+| Jaguar D. Saul | NULL |
+
+### Q2. Eventos da Era de Roger
+
+O que marcou o mundo na época de Gol D. Roger, até a execução dele em 1500? A consulta lista os eventos ocorridos entre 1480 e 1500, em ordem cronológica. Como as datas são guardadas como texto no formato `AAAA-MM-DD`, a ordem alfabética coincide com a cronológica e o `BETWEEN` funciona como um intervalo de tempo.
+
+```sql
+SELECT
+  evento.nome            AS nome,
+  evento.data_ocorrencia AS data_ocorrencia
+FROM evento
+WHERE
+  (evento.data_ocorrencia BETWEEN '1480-01-01' AND '1500-12-31')
+ORDER BY
+  evento.data_ocorrencia;
+```
+
+Exemplo de saída (4 de 4 linhas):
+
+| nome | data_ocorrencia |
+|---|---|
+| Revolta do Harém | 1480-01-01 |
+| Incidente do Deus da Montanha | 1483-01-01 |
+| Incidente de God Valley | 1486-01-01 |
+| Batalha de Edd War | 1497-01-01 |
+
+### Q3. Navios fora de uso
+
+Quais navios não navegam mais? A consulta lista os navios destruídos ou desaparecidos, agrupados pela situação e em ordem alfabética.
+
+```sql
+SELECT
+  navio.nome     AS nome,
+  navio.situacao AS situacao
+FROM navio
+WHERE
+  (navio.situacao IN ('destruido', 'desaparecido'))
+ORDER BY
+  navio.situacao,
+  navio.nome;
+```
+
+Exemplo de saída (5 de 32 linhas):
+
+| nome | situacao |
+|---|---|
+| Blood Batako | destruido |
+| Cooking George | destruido |
+| Dreadnaught Sabre | destruido |
+| Going Luffy-senpai | destruido |
+| Going Merry | destruido |
+
+### Q4. Sagas depois do salto temporal
+
+Quais sagas acontecem depois do salto temporal de dois anos? A consulta lista, sem repetição, as sagas que têm arcos iniciados em 1524. Como `saga` é um ENUM, a ordenação segue a ordem de declaração dos valores, que é a ordem cronológica das sagas.
+
+```sql
+SELECT DISTINCT
+  arco.saga AS saga
+FROM arco
+WHERE
+  (arco.data_inicio LIKE '1524-%')
+ORDER BY
+  arco.saga;
+```
+
+Exemplo de saída (4 de 4 linhas):
+
+| saga |
+|---|
+| ilha_dos_homens_peixe |
+| dressrosa |
+| yonkou |
+| final |
+
+### Q5. Os 5 primeiros arcos
+
+Como começa a jornada? A consulta lista os 5 primeiros arcos da história, pela data de início e, no empate, pela data de fim.
+
+```sql
+SELECT
+  arco.nome        AS nome,
+  arco.saga        AS saga,
+  arco.data_inicio AS data_inicio
+FROM arco
+ORDER BY
+  arco.data_inicio,
+  arco.data_fim
+LIMIT 5;
+```
+
+Exemplo de saída (5 de 5 linhas):
+
+| nome | saga | data_inicio |
 |---|---|---|
-| Consultas simples | 5 | SELECT, WHERE, ORDER BY, LIKE, BETWEEN, IN, DISTINCT, LIMIT |
-| Consultas com JOIN | 5 | INNER JOIN (3 com duas ou mais tabelas, 2 com três ou mais), GROUP BY, HAVING, COUNT, SUM, AVG, MAX, MIN |
-| Bônus | 1 de cada | subconsulta (no FROM e em CTE) e LEFT ou RIGHT JOIN |
+| Romance Dawn | east_blue | 1522-02-01 |
+| Orange Town | east_blue | 1522-02-01 |
+| Vila Syrup | east_blue | 1522-02-11 |
+| Baratie | east_blue | 1522-02-14 |
+| Arlong Park | east_blue | 1522-02-15 |
+
+### Q6. Personagens por raça
+
+Quais raças são mais frequentes no universo da obra? A consulta conta os personagens de cada raça, da mais numerosa para a menos numerosa. Personagens sem raça informada ficam de fora, porque o `INNER JOIN` exige correspondência em `raca`.
+
+```sql
+SELECT
+  raca.nome AS raca,
+  COUNT(*)  AS quantidade_personagens
+FROM personagem INNER JOIN raca ON (raca.id = personagem.raca_id)
+GROUP BY
+  raca.nome
+ORDER BY
+  quantidade_personagens DESC;
+```
+
+Exemplo de saída (6 de 24 linhas):
+
+| raca | quantidade_personagens |
+|---|---|
+| Humano | 958 |
+| Animal | 50 |
+| Gigante | 48 |
+| Homem-Peixe | 40 |
+| Povo-Sereia | 29 |
+| Mink | 23 |
+
+### Q7. Evolução das recompensas
+
+Como as recompensas evoluíram para quem foi procurado várias vezes? Para cada personagem com 3 ou mais recompensas emitidas, a consulta mostra a quantidade, a menor, a maior e a média dos valores. O `HAVING` filtra os grupos depois do `GROUP BY`, mantendo só os personagens com pelo menos 3 recompensas.
+
+```sql
+SELECT
+  personagem.nome                 AS personagem,
+  COUNT(*)                        AS quantidade_recompensas,
+  MIN(recompensa.valor)           AS menor_recompensa,
+  MAX(recompensa.valor)           AS maior_recompensa,
+  ROUND(AVG(recompensa.valor), 2) AS media_recompensa
+FROM recompensa INNER JOIN personagem ON (personagem.id = recompensa.personagem_id)
+GROUP BY
+  personagem.nome
+HAVING
+  (COUNT(*) >= 3)
+ORDER BY
+  maior_recompensa DESC;
+```
+
+Exemplo de saída (5 de 13 linhas):
+
+| personagem | quantidade_recompensas | menor_recompensa | maior_recompensa | media_recompensa |
+|---|---|---|---|---|
+| Charlotte Linlin | 3 | 50000000 | 4388000000 | 1646000000.00 |
+| Eustass Kid | 3 | 315000000 | 3000000000 | 1261666666.67 |
+| Monkey D. Luffy | 7 | 30000000 | 3000000000 | 832857142.86 |
+| Trafalgar D. Water Law | 5 | 80000000 | 3000000000 | 844000000.00 |
+| Roronoa Zoro | 4 | 60000000 | 1111000000 | 402750000.00 |
+
+### Q8. Haki entre os personagens vivos
+
+Quantos personagens vivos dominam cada tipo de Haki, e quantos chegaram ao nível avançado? A coluna `avancado` é booleana (1 ou 0), então `SUM` soma os registros marcados como avançados, enquanto `COUNT(*)` conta todos os usuários do tipo.
+
+```sql
+SELECT
+  personagem_haki.haki          AS haki,
+  COUNT(*)                      AS quantidade_usuarios,
+  SUM(personagem_haki.avancado) AS quantidade_avancados
+FROM personagem_haki INNER JOIN personagem ON (personagem.id = personagem_haki.personagem_id)
+WHERE
+  (personagem.esta_vivo)
+GROUP BY
+  personagem_haki.haki
+ORDER BY
+  personagem_haki.haki;
+```
+
+Exemplo de saída (3 de 3 linhas):
+
+| haki | quantidade_usuarios | quantidade_avancados |
+|---|---|---|
+| observacao | 113 | 5 |
+| armamento | 110 | 14 |
+| conquistador | 21 | 9 |
+
+### Q9. Tripulação do Chapéu de Palha
+
+Quem faz parte dos Piratas do Chapéu de Palha, com qual função e desde quando? A consulta lista os membros em ordem de entrada. O `LEFT JOIN` com `cargo` mantém os membros sem cargo registrado, e os que não têm data de entrada aparecem por último.
+
+```sql
+SELECT
+  personagem.nome                    AS personagem,
+  cargo.nome                         AS cargo,
+  personagem_tripulacao.data_entrada AS data_entrada
+FROM personagem INNER JOIN personagem_tripulacao ON (personagem_tripulacao.personagem_id = personagem.id)
+                INNER JOIN tripulacao ON (tripulacao.id = personagem_tripulacao.tripulacao_id)
+                LEFT JOIN cargo ON (cargo.id = personagem_tripulacao.cargo_id)
+WHERE
+  (tripulacao.nome = 'Piratas do Chapéu de Palha')
+ORDER BY
+  personagem_tripulacao.data_entrada IS NULL,
+  personagem_tripulacao.data_entrada,
+  personagem.nome;
+```
+
+Exemplo de saída (12 de 12 linhas):
+
+| personagem | cargo | data_entrada |
+|---|---|---|
+| Monkey D. Luffy | Capitão | 1522-02-01 |
+| Nami | Navegador | 1522-02-01 |
+| Roronoa Zoro | Combatente | 1522-02-01 |
+| Usopp | Atirador | 1522-02-12 |
+| Sanji | Cozinheiro | 1522-02-14 |
+| Tony Tony Chopper | Médico | 1522-02-21 |
+| Nico Robin | Arqueólogo | 1522-03-08 |
+| Franky | Carpinteiro | 1522-03-25 |
+| Brook | Músico | 1522-03-27 |
+| Jinbe | Timoneiro | 1524-02-29 |
+| Nefertari Vivi | NULL | NULL |
+| Zeus | NULL | NULL |
+
+### Q10. Patentes da Marinha
+
+Como os personagens da Marinha se distribuem pelas patentes? A consulta conta quantos personagens a Marinha tem em cada patente, da mais frequente para a menos frequente.
+
+```sql
+SELECT
+  cargo.nome AS patente,
+  COUNT(*)   AS quantidade_personagens
+FROM personagem_organizacao INNER JOIN organizacao ON (organizacao.id = personagem_organizacao.organizacao_id)
+                            INNER JOIN cargo ON (cargo.id = personagem_organizacao.cargo_id)
+WHERE
+  (organizacao.nome = 'Marinha')
+GROUP BY
+  cargo.nome
+ORDER BY
+  quantidade_personagens DESC;
+```
+
+Exemplo de saída (6 de 12 linhas):
+
+| patente | quantidade_personagens |
+|---|---|
+| Vice-Almirante | 28 |
+| Capitão | 9 |
+| Comodoro | 4 |
+| Contra-Almirante | 4 |
+| Comandante | 4 |
+| Almirante | 3 |
 
 ## 8. Instruções de execução
 
 **Requisitos:** MySQL Server 8.0.19 ou superior. Versões anteriores à 8.0.16 aceitam a sintaxe de `CHECK` mas não aplicam a restrição, os CHECKs de data usam `REGEXP_LIKE` (MySQL 8.0) e o povoamento usa o construtor de tabela `VALUES ROW(...)`, disponível a partir da 8.0.19.
 
-> O script começa com `DROP DATABASE IF EXISTS onepiece_wiki`. Executá-lo apaga qualquer banco com esse nome antes de recriá-lo.
+> O script `sql/01-banco-e-dados.sql` cria o banco `onepiece_wiki`, as tabelas e os registros do povoamento. Se o banco já existir na instância, o script para logo na primeira linha; para executá-lo de novo, apague o banco antes.
 
 **Pelo MySQL Workbench**
 
 1. Conecte-se à instância local.
 2. Abra `sql/01-banco-e-dados.sql` em *File › Open SQL Script*.
 3. Execute o script inteiro (ícone de raio ou `Ctrl+Shift+Enter`).
-4. Abra e execute `sql/02-povoamento.sql` para carregar os dados.
-5. Atualize o painel *Schemas* para ver o banco `onepiece_wiki`.
-6. Abra e execute `sql/03-consultas.sql` para rodar as consultas.
+4. Atualize o painel *Schemas* para ver o banco `onepiece_wiki`.
+5. Abra e execute `sql/02-consultas.sql` para rodar as consultas.
 
 **Pela linha de comando**
 
 ```bash
 mysql -u <usuario> -p --default-character-set=utf8mb4 < sql/01-banco-e-dados.sql
-mysql -u <usuario> -p --default-character-set=utf8mb4 < sql/02-povoamento.sql
-mysql -u <usuario> -p --default-character-set=utf8mb4 onepiece_wiki < sql/03-consultas.sql
+mysql -u <usuario> -p --default-character-set=utf8mb4 onepiece_wiki < sql/02-consultas.sql
 ```
 
 O parâmetro `--default-character-set=utf8mb4` garante que nomes com acento sejam gravados corretamente.
@@ -242,5 +517,5 @@ O parâmetro `--default-character-set=utf8mb4` garante que nomes com acento seja
 - MySQL Workbench 8.0, para execução dos scripts e demonstração.
 - draw.io Desktop 32.4.1, para o diagrama entidade-relacionamento e o diagrama de classes (arquivos `.drawio` e exportação em PNG).
 - API MediaWiki da One Piece Wiki, para coletar as fichas e categorias das páginas usadas no povoamento.
-- Python 3.12, em scripts auxiliares que converteram os dados coletados nas instruções `INSERT INTO` de `sql/02-povoamento.sql`.
+- Python 3.12, em scripts auxiliares que converteram os dados coletados nas instruções `INSERT INTO` de `sql/01-banco-e-dados.sql`.
 - Git 2.56 e GitHub, para versionamento e publicação do repositório.
